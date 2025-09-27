@@ -1,4 +1,7 @@
 using UnityEngine;
+using TMPro;
+using System.Xml.Serialization;
+using Unity.VisualScripting;
 
 public class FlappyController : MonoBehaviour
 {
@@ -7,24 +10,34 @@ public class FlappyController : MonoBehaviour
     public Quaternion topRotation;
     public Quaternion midRotation;
     public Quaternion bottomRotation;
+    public Transform sprite;
+    public TMP_Text pointsText;
     public float maxFallSpeed;
     public float maxJumpSpeed;
     public float jumpForce;
     public float timeBetweenJump;
     private float jumpTimer;
-
     private bool jumping;
+    private int points;
+    private float ground;
 
-    void Start()
+    void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         jumpTimer = timeBetweenJump;
+    }
+
+    private void OnEnable()
+    {
+        ground = (GameManager.Singleton.screenSize.y * -0.5f) - 0.5f;
     }
 
     private void Update()
     {
         lookDirection();
         checkJumping();
+        if (rb.transform.position.y <= ground)
+            GameOver();
     }
 
     private void checkJumping()
@@ -34,7 +47,7 @@ public class FlappyController : MonoBehaviour
         {
             return;
         }
-        if (Input.GetKey(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space) && rb.linearVelocityY < maxJumpSpeed)
         {
             jumping = true;
         }
@@ -52,7 +65,8 @@ public class FlappyController : MonoBehaviour
         if (!jumping)
             return;
 
-        rb.AddForce(new Vector2(0, jumpForce));
+        rb.linearVelocityY = 0f;
+        rb.AddForce(new Vector2(0, jumpForce), ForceMode2D.Impulse);
         jumping = false;
     }
 
@@ -60,7 +74,7 @@ public class FlappyController : MonoBehaviour
     {
         if ((rb.linearVelocityY * -1) < maxFallSpeed) 
         {
-            rb.AddForce(new Vector2(0, -gravity));
+            rb.linearVelocityY -= gravity;
         }
     }
 
@@ -69,11 +83,29 @@ public class FlappyController : MonoBehaviour
         float currentVelocity = rb.linearVelocityY;
         if (currentVelocity >= 0)
         {
-            Quaternion.Lerp(midRotation, topRotation, currentVelocity / maxJumpSpeed);
+            sprite.rotation = Quaternion.Lerp(midRotation, topRotation, currentVelocity / maxJumpSpeed);
         }
         else
         {
-            Quaternion.Lerp(midRotation, bottomRotation, (currentVelocity* -1)/ maxFallSpeed);
+            sprite.rotation = Quaternion.Lerp(midRotation, bottomRotation, (currentVelocity* -1)/ maxFallSpeed);
         }
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        points++;
+        pointsText.text = points.ToString();
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        GameOver();
+
+    }
+
+    public void GameOver()
+    {
+        Debug.Log("GameOVer");
+        Time.timeScale = 0f;
     }
 }
